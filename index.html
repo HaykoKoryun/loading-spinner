@@ -1,0 +1,71 @@
+<!doctype html>
+<html>
+  <head>
+    <title>Loading Spinner</title>
+    <script src="bower_components/webcomponentsjs/webcomponents-lite.js"></script>
+    <script src="bower_components/trianglify/dist/trianglify.min.js"></script>
+    <link rel="import" href="loading-spinner.html"/>
+    <style>
+      #bg
+      {
+        width: 100%;
+        height: 100%;
+        position: absolute;
+        left: 0px;
+        right: 0px;
+        top: 0px;
+        bottom: 0px;
+        fliter: blur(5px);
+        -webkit-filter: blur(5px);
+      }
+    </style>
+  </head>
+  <body>
+    <canvas id="bg"></canvas>
+    <script>
+      window.addEventListener("WebComponentsReady", function(e)
+      {
+        (function()
+        {
+          var canvas = document.querySelector("#bg");
+
+          var opts = null;
+
+          function render()
+          {
+            if(opts != null)
+            {
+              opts.width = window.innerWidth;
+              opts.height = window.innerHeight;
+
+              var pattern = Trianglify
+              (opts);
+
+              pattern.canvas(canvas);
+            }
+            else
+            {
+              var pattern = Trianglify
+              ({
+                height: window.innerHeight,
+                width: window.innerWidth,
+                cell_size: 40
+              });
+
+              opts = pattern.opts;
+
+              pattern.canvas(canvas);
+            }
+          }
+
+          render();
+
+          window.addEventListener("resize", render);
+        })();
+
+        var spinner = new LoadingSpinner({containers:"#container", blur:10});
+        spinner.show();
+      });
+    </script>
+  </body>
+</html>

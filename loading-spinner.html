@@ -1,0 +1,262 @@
+<link rel="import" href="../polymer/polymer.html">
+<script src="../stylo/stylo.js"></script>
+
+<dom-module is="loading-spinner">
+  <style>
+    :host
+    {
+      position: fixed;
+      left: 0px;
+      right: 0px;
+      top: 0px;
+      bottom:0px;
+      margin: auto;
+      width: 100px;
+      height: 100px;
+    }
+
+    :host canvas
+    {
+      width: 100%;
+      height: 100%;
+    }
+  </style>
+  <template>
+    <canvas id="canvas"></canvas>
+  </template>
+  <script>
+    var LoadingSpinner = Polymer
+    ({
+      is: "loading-spinner",
+      factoryImpl: function(opts)
+      {
+        var _containers = false;
+        var _blur = 0;
+
+        if(typeof opts != "undefined")
+        {
+          if(typeof opts.containers != "undefined")
+          {
+            _containers = opts.containers;
+          }
+
+          if(typeof opts.blur != "undefined")
+          {
+            _blur = opts.blur;
+          }
+        }
+
+        if(_blur != 0)
+        {
+          var _stylo = new Stylo();
+          var _blurclass = "blur-" + Date.now();
+          _stylo.addRule
+          (
+            "." + _blurclass,
+            {
+              "filter" : "blur(" + _blur + "px)",
+              "-webkit-filter" : "blur(" + _blur + "px)"
+            }
+          );
+          _stylo.update();
+        }
+
+        var instance = this;
+
+        var visible = false;
+
+        var canvas = instance.$.canvas;
+        canvas.width = 100;
+        canvas.height = 100;
+        var ctx = canvas.getContext("2d");
+
+        var bcanvas = document.createElement("canvas");
+        bcanvas.width = 100;
+        bcanvas.height = 100;
+        var bctx = bcanvas.getContext("2d");
+        bctx.globalAlpha = 0.9;
+
+        var _2PI = Math.PI * 2;
+        var _PI_4 = Math.PI / 4;
+        var _PI_2 = Math.PI / 2;
+        var _flipAngleMin = (Math.PI / 2) + _PI_4;
+
+        var colors = ["#faa61b", "#4e87c6", "#8dc641", "#f1592b", "#bf202f", "#a2a475", "#747b35", "#56652d", "#bf83b9", "#722772", "#9f306e", "#b75b46", "#1baebe", "#6d99cf"];
+        var ox = 50;
+        var oy = 50;
+        var blobs = [];
+
+        for(var i = 0; i < 4; ++i)
+        {
+          blobs.push
+          ({
+            a:0,
+            x:0,
+            y:0,
+            color:colors[i],
+            da:0,
+            dx:0,
+            dy:0
+          });
+        }
+
+        init();
+
+        function init()
+        {
+          for(var i = 0; i < blobs.length; ++i)
+          {
+          	var pos = calcInitDest();
+            var dest = calcNewDest(pos.a);
+
+            var blob = blobs[i];
+            blob.a = pos.a;
+            blob.x = pos.x;
+            blob.y = pos.y;
+            blob.da = dest.a;
+            blob.dx = dest.x;
+            blob.dy = dest.y;
+          }
+        }
+
+        function update()
+        {
+        	for(var i = 0; i < blobs.length; ++i)
+          {
+          	var blob = blobs[i];
+
+            // vector to destination
+            var vector =
+            {
+            	x: blob.dx - blob.x,
+              y: blob.dy - blob.y
+            };
+
+            // distance to destination
+            var dd = Math.sqrt((vector.x*vector.x) + (vector.y*vector.y));
+
+            blob.x = blob.x + (vector.x * (1.5/dd));
+            blob.y = blob.y + (vector.y * (1.5/dd));
+
+            // vector to centre
+            var gravity = {
+            	x: ox - blob.x,
+              y: oy - blob.y
+            };
+
+            // distance to centre
+            var dg = Math.sqrt((gravity.x*gravity.x) + (gravity.y*gravity.y));
+
+            var tvec =
+            {
+              x: - (oy - blob.y),
+              y: ox - blob.x
+            }
+
+            blob.x = blob.x - (tvec.x * (1.4/dg));
+            blob.y = blob.y - (tvec.y * (1.4/dg));
+
+            if(dd < 2)
+            {
+            	var dest = calcNewDest(blob.da);
+              blob.a = blob.da;
+              blob.dx = dest.x;
+              blob.dy = dest.y;
+              blob.da = dest.a;
+            }
+          }
+        }
+
+        function render()
+        {
+        	update();
+
+          bctx.clearRect(0,0,100,100);
+          bctx.drawImage(canvas,0,0,100,100);
+          ctx.clearRect(0,0,100,100);
+          ctx.drawImage(bcanvas,0,0,100,100);
+        	for(var i = 0; i < blobs.length; ++i)
+          {
+          	var blob = blobs[i];
+          	ctx.beginPath();
+            ctx.fillStyle = blob.color;
+            ctx.arc(blob.x,blob.y,5,0,Math.PI * 2);
+            ctx.fill();
+            ctx.closePath();
+          }
+
+          if(visible)
+          {
+            requestAnimationFrame(render);
+          }
+        }
+
+        function calcInitDest()
+        {
+        	var r = 40 + (Math.random() * 5);
+
+        	var angle = Math.random() * Math.PI * 2;
+
+          return {
+          	a: angle,
+          	x: ox + (Math.cos(angle) * r),
+            y: oy + (Math.sin(angle) * r)
+          };
+        }
+
+        function calcNewDest(angle)
+        {
+        	var r = 30 + (Math.random() * 15);
+
+        	var newangle = angle + _flipAngleMin + (Math.random() * _PI_2);
+
+          return {
+          	a: newangle,
+          	x: ox + (Math.cos(newangle) * r),
+            y: oy + (Math.sin(newangle) * r)
+          };
+        }
+
+        instance.show = function()
+        {
+          if(visible) return;
+
+          toggleBlur(true);
+
+          document.body.appendChild(instance);
+          visible = true;
+          render();
+        }
+
+        instance.hide = function()
+        {
+          if(!visible) return;
+
+          toggleBlur(false);
+
+          visible = false;
+          document.body.removeChild(instance);
+        }
+
+        function toggleBlur(on)
+        {
+          if(_containers != false)
+          {
+            var containers = document.querySelectorAll(_containers);
+            for(var i = 0; i < containers.length; ++i)
+            {
+              if(on)
+              {
+                containers[i].classList.add(_blurclass);
+              }
+              else
+              {
+                containers[i].classList.remove(_blurclass);
+              }
+            }
+          }
+        }
+      }
+    });
+  </script>
+</dom-module>
